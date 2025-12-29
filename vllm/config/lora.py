@@ -3,6 +3,7 @@
 
 from typing import TYPE_CHECKING, Any, Literal
 
+import regex as re
 import torch
 from pydantic import ConfigDict, Field, model_validator
 from pydantic.dataclasses import dataclass
@@ -60,6 +61,14 @@ class LoRAConfig:
     of multimodal models will be enabled. This is an experimental feature and 
     currently only supports some MM models such as the Qwen VL series. The default 
     is False."""
+    lora_target_regex: str | None = None
+    """If specified, only modules whose names match this regular expression will be
+    considered for LoRA modification. This is useful for selectively applying
+    LoRA to specific parts of the model, which can help in reducing memory
+    usage. The regex is matched against the full name of the module.
+    For example, if you only want to initialize self-attention related layers, you
+    can use a regex like '.*\\.self_attn\\..*'.
+    """
 
     def compute_hash(self) -> str:
         """
@@ -79,6 +88,7 @@ class LoRAConfig:
         factors.append(self.fully_sharded_loras)
         factors.append(self.lora_dtype)
         factors.append(self.enable_tower_connector_lora)
+        factors.append(self.lora_target_regex)
 
         hash_str = safe_hash(str(factors).encode(), usedforsecurity=False).hexdigest()
         return hash_str
@@ -92,6 +102,14 @@ class LoRAConfig:
                 f"max_cpu_loras ({self.max_cpu_loras}) must be >= "
                 f"max_loras ({self.max_loras})"
             )
+
+        if self.lora_target_regex:
+            try:
+                re.compile(self.lora_target_regex)
+            except re.error as e:
+                raise ValueError(
+                    f"Invalid regex for lora_target_regex: {self.lora_target_regex}"
+                ) from e
 
         return self
 

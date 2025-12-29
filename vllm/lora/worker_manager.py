@@ -4,6 +4,7 @@
 from contextlib import contextmanager
 from typing import Any, Literal
 
+import regex as re
 import torch
 
 from vllm.config import VllmConfig
@@ -125,6 +126,19 @@ class WorkerLoRAManager:
                 tensorizer_config_dict=lora_request.tensorizer_config_dict,
                 weights_mapper=hf_to_vllm_mapper,
             )
+
+            # Check weights matches with the regex, if configured.
+            if self.lora_config.lora_target_regex:
+                for module_name in lora.loras:
+                    if not re.search(self.lora_config.lora_target_regex, module_name):
+                        logger.warning(
+                            "LoRA module '%s' in adapter '%s' does not match the "
+                            "lora_target_regex ('%s'). These parameters will be "
+                            "ignored, which may cause abnormal model behavior.",
+                            module_name,
+                            lora_request.lora_path,
+                            self.lora_config.lora_target_regex,
+                        )
 
         except FileNotFoundError as e:
             # FileNotFoundError should be raised if both

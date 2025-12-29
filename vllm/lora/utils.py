@@ -89,6 +89,7 @@ def from_layer(
     lora_config: LoRAConfig,
     packed_modules_list: list,
     model_config: PretrainedConfig | None = None,
+    layer_name: str | None = None,
 ) -> nn.Module:
     for lora_cls in _all_lora_classes:
         # specifying kwargs so they can be easily accessed in decorator
@@ -98,6 +99,11 @@ def from_layer(
             packed_modules_list=packed_modules_list,
             model_config=model_config,
         ):
+            logger.debug(
+                "[LoRA] %s applied with %s",
+                layer_name,
+                getattr(lora_cls, "__name__", str(lora_cls)),
+            )
             instance_layer = lora_cls(layer)
             instance_layer.create_lora_weights(max_loras, lora_config, model_config)
             return instance_layer

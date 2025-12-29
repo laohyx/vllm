@@ -383,6 +383,11 @@ class LoRAModelManager:
             if not self._match_target_modules(module_name):
                 continue
 
+            if self.lora_config.lora_target_regex and not re.search(
+                self.lora_config.lora_target_regex, module_name
+            ):
+                continue
+
             punica_wrapper = self._get_punica_wrapper(module_name)
             if punica_wrapper is None:
                 logger.warning(
@@ -411,6 +416,7 @@ class LoRAModelManager:
                     self.lora_config,
                     packed_moduled_lst,
                     self.model.config,
+                    module_name,
                 ),
             )
 
@@ -549,6 +555,14 @@ class LoRAModelManager:
                 else:
                     lora = PackedLoRALayerWeights.pack(subloras)
                 model.loras[module_name] = lora
+
+        if not model.loras:
+            raise ValueError(
+                "No layers in the model have LoRA applied. "
+                "The regular expression might be wrong. "
+                "Please check the --lora-target-regex parameter."
+            )
+
         return model
 
     def _match_target_modules(self, module_name: str):
